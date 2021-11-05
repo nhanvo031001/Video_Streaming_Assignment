@@ -178,23 +178,23 @@ class ServerWorker:
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
 				# Store frame into clientInfo:
-				self.frameDict[frameNumber] = data
+				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
 					address = self.clientInfo['rtspSocket'][1][0]
 					port = int(self.clientInfo['rtpPort'])
 					#self.frameSent +=1
 					#self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
 					if self.clientInfo['currentPos'] > 0:
-						self.clientInfo['currentPos'] -= 1          # end - start + 1 ---> frame foward = 30 = end - start + 1 -----> -=1
+						self.clientInfo['currentPos'] -= 1          # end - start + 1 ---> frame foward = 20 = end - start + 1 -----> -=1
 					elif self.clientInfo['currentPos'] == 0:
 						self.frameSent += 1
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber), (address, port))
 					else:
 						while self.clientInfo['currentPos'] < 0:
 							self.clientInfo['event'].wait(self.waitTime)
-							frame_prior = frameNumber + self.clientInfo['currentPos']
-							data_prior = self.frameDict[frame_prior]
-							print(f"currentPOS {self.clientInfo['currentPos']}")
+							frame_prior = frameNumber + self.clientInfo['currentPos']		# currentPos hien tai dang < 0
+							data_prior = self.frameDict[frame_prior]		# lay video frame da luu trong array frameDict
+							#print(f"currentPOS {self.clientInfo['currentPos']}")
 							self.clientInfo['currentPos'] += 1
 							self.frameSent += 1
 							self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))

@@ -19,14 +19,14 @@ class RtpPacket:
 		
 		# header[0] = ...
 		# ...
-		header[0] = header[0] | version << 6
-		header[0] = header[0] |	padding << 5
-		header[0] = header[0] | extension << 4
-		header[0] = header[0] | cc
-		header[1] = header[1] | marker << 7
-		header[1] = header[1] | pt
+		header[0] = header[0] | ((version << 6) & 0xFF)
+		header[0] = header[0] |	((padding << 5) & 0x3F)
+		header[0] = header[0] | ((extension << 4) & 0x1F)
+		header[0] = header[0] | ((cc) & 0x0F)
+		header[1] = header[1] | ((marker << 7) & 0xFF)
+		header[1] = header[1] | (pt & 0x7F)
 		header[2] = (seqnum >> 8) & 0xFF
-		header[3] = (seqnum & 0x00FF)
+		header[3] = (seqnum & 0xFF)
 		header[4] = (timestamp >> 24) & 0xFF
 		header[5] = (timestamp >> 16) & 0xFF
 		header[6] = (timestamp >> 8) & 0xFF

@@ -1,0 +1,55 @@
+dau tien server.py tao socket tcp nhan request tu client
+    nhan (address, port)
+
+ham init cua client.py co cac tham so truyen vao la cac tham so khi go command tren terminal
+
+thang client: sau khi init cac tham so, se goi ham connectToServer(), kem theo (address, port)
+
+======
+chon SETUP:
+    --> goi ham setupMovie, voi dieu kien la INIT, thoa dieu kien --> goi ham sendRtspRequest
+    ham sendRtspRequest check state (INIT), request type (SETUP) --> sau do tao 1 thread cho yeu cau nay, thread nay se nhan reply tu server
+        request luon co format: 
+            SETUP {self.fileName} RTSP/1.0
+            Cseq: {self.rtspSeq}    # order of rtsp packet sent
+            Session: {self.sessionId}
+    ham recvRtspReply la nhan reply rtsp tu server, se co socket lang nghe reply 
+    nhan dc reply rtsp tu server ---> goi ham parseRtspReply
+        reply rtsp tu server, dong dau tien luon co format: 
+                reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+                RTSP/1.0 200 OK
+                CSeq: seq
+                Session: clientInfo['session']
+    sau cac buoc tren hoan thanh, goi ham openRtpPort de nhan video frame tu server qua port nay
+
+rtpPort: port nhan video frame
+rtsp: la request client gui den server
+
+
+
+chon PLAY:
+    goi ham playMovie, tao 1 thread lang nghe RTP packet tu server thong quan function listenRtp
+        self.playEvent = threading.Event()  # Event(): quan ly flag, set() flag true, clear() flag false, wait() block until flag true
+
+    tiep theo goi ham sendRtspRequest
+        ham nay update sequence number
+        request rtsp gui den server luon co format:
+            PLAY {self.fileName} RTSP/1.0
+            Cseq: {self.rtspSeq}    # order of rtsp packet sent
+            Session: {self.sessionId}
+
+
+
+DESCRIBE:
+    format reply RTSP tu server gui den client:
+            'RTSP/1.0 200 OK
+            CSeq: seq
+            Session: clientInfo['session']
+			==========================StreamInfo=========================================
+			You are watching a video stream over UDP with RTP packetization
+			You have watch the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}
+			This message is sent over RTSP at: 
+			IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}
+			This message is sent over utf8-encode
+			=============================================================================
+        

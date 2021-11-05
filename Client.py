@@ -67,14 +67,8 @@ class Client:
         self.curSeqNum = 0
         self.frameServerSent = 0
         self.receivedTotalFrameNum = FALSE      # # when receiving reply from server ---> will show statistic
-
-    def getImageFromUrl(self, url):
-        with urllib.request.urlopen(url) as u:
-            raw_data = u.read()
-        im = Image.open(BytesIO(raw_data))
-        image = ImageTk.PhotoImage(im)
-        return image
-
+        self.setupMovie
+        
     def createWidgets(self):
         """Build GUI."""
 
@@ -223,7 +217,7 @@ class Client:
         if self.state == self.READY:        # state is ready --> allow play
             # Create a new thread to listen for RTP packets
             threading.Thread(target=self.listenRtp).start()
-            self.playEvent = threading.Event()
+            self.playEvent = threading.Event()  # Event(): quan ly flag, set() flag true, clear() flag false, wait() block until flag true
             self.playEvent.clear()
             self.sendRtspRequest(self.PLAY)
     
@@ -271,25 +265,25 @@ class Client:
     def listenRtp(self):
         """Listen for RTP packets."""
         # Get time before receiving the packet
-        before = datetime.now()
+        before = datetime.now()         # for caculate bytes/seconds (ratio)
         while True:
             try:
-                data = self.rtpSocket.recv(20480)
+                data = self.rtpSocket.recv(20480)       # receive rtp packet from server
                 # Keep track of the number of data frames received
-                self.count = self.count + 1     # count for frames sent, for statistic
+                self.count = self.count + 1     # count for frames received, for statistic
                 if data:
-                    # Depacket the RtpPacket
+                    # Depacket the RtpPacket, in RtpPacket.py
                     rtpPacket = RtpPacket()
                     rtpPacket.decode(data)
                     # Get the current time after receiving the packet in hour : minute : second format
                     currentTime = datetime.now()
                     # Parse the string and convert the time interval to seconds
-                    curResult = str(currentTime - before).split(':')
+                    curResult = str(currentTime - before).split(':')        # curResult[0] hour, curResult[1] minute, curResult[2] second  
                     self.curSecond += float(curResult[0]) * 3600 + float(
                         curResult[1]) * 60 + float(curResult[2])
-                    self.sizeData = self.sizeData + sys.getsizeof(data) # for statistic
+                    self.sizeData = self.sizeData + sys.getsizeof(data) # for statistic, ratio
 
-                    currFrameNbr = rtpPacket.seqNum()
+                    currFrameNbr = rtpPacket.seqNum()       # frame video received from server
                     print("Current Sequence Number: " + str(currFrameNbr))
 
                     self.curSeqNum = rtpPacket.seqNum()
@@ -431,7 +425,7 @@ class Client:
             request = f"BACKWARD {self.fileName} RTSP/1.0\n"
             request += f"Cseq: {self.rtspSeq}\n"
             request += f"Session: {self.sessionId}"
-            self.frameNbr -= self.FRAME_TO_BACKWARD
+            #self.frameNbr -= self.FRAME_TO_BACKWARD
             self.requestSent = self.BACKWARD
 
         else:
@@ -451,8 +445,8 @@ class Client:
 
             # Close the RTSP socket upon requesting Teardown
             if self.requestSent == self.TEARDOWN:
-                self.rtspSocket.shutdown(socket.SHUT_RDWR)
-                self.rtspSocket.close()
+                self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket
+                self.rtspSocket.close()         # close socket
                 break
 
     def parseRtspReply(self, data):     # get session id and sequence number of video
@@ -469,12 +463,12 @@ class Client:
 
             # Process only if the session ID is the same
             if self.sessionId == session:
-                if int(lines[0].split(' ')[1]) == 200:
+                if int(lines[0].split(' ')[1]) == 200:      # status code la 200 OK --> nhan reply thanh cong
                     if self.requestSent == self.SETUP:
                         # Update RTSP state.
                         self.state = self.READY
                         # Open RTP port.
-                        self.openRtpPort()
+                        self.openRtpPort()                  # de nhan data video frame server gui
 
                     elif self.requestSent == self.PLAY:
                         # update state
@@ -519,7 +513,7 @@ class Client:
             # Bind the socket to the address using the RTP port given by the client user
             # ...
             self.state = self.READY
-            self.rtpSocket.bind(('', self.rtpPort))
+            self.rtpSocket.bind(('', self.rtpPort))     # rtpPort: la port nhan video frame
         except:
             tkinter.messagebox.showwarning('Unable to Bind', 'Unable to bind PORT=%d' % self.rtpPort)
 
