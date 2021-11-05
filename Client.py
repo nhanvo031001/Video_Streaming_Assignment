@@ -67,7 +67,9 @@ class Client:
         self.curSeqNum = 0
         self.frameServerSent = 0
         self.receivedTotalFrameNum = FALSE      # # when receiving reply from server ---> will show statistic
-        self.setupMovie
+        #self.sendRtspRequest(self.SETUP)       # for setup automatically
+        #self.setupMovie()
+        
         
     def createWidgets(self):
         """Build GUI."""
@@ -214,6 +216,9 @@ class Client:
 
     def playMovie(self):
         """Play button handler."""      
+        # if self.state == self.INIT:
+        #    self.sendRtspRequest(self.SETUP)
+
         if self.state == self.READY:        # state is ready --> allow play
             # Create a new thread to listen for RTP packets
             threading.Thread(target=self.listenRtp).start()
@@ -425,7 +430,7 @@ class Client:
             request = f"BACKWARD {self.fileName} RTSP/1.0\n"
             request += f"Cseq: {self.rtspSeq}\n"
             request += f"Session: {self.sessionId}"
-            #self.frameNbr -= self.FRAME_TO_BACKWARD
+            self.frameNbr -= self.FRAME_TO_BACKWARD
             self.requestSent = self.BACKWARD
 
         else:
