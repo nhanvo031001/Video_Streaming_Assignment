@@ -162,22 +162,29 @@ class Client:
         self.forward.grid(row=2, column=3, padx=2, pady=2,sticky=N + S + E + W)
 
         # Create SWITCH button
-        switch_image = PhotoImage(file = r"./assets/fward.png")
-        switch_image = forward_image.subsample(1, 1)
-        self.forward = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=switch_image)
-        self.forward.image = forward_image
-        self.forward["text"] = "Switch"
-        self.forward["font"] = myFont
-        self.forward["command"] = self.handle_switch_button
-        self.forward.grid(row=0, column=1, padx=2, pady=2,sticky=N + S + E + W)
+        switch_image = PhotoImage(file = r"./assets/switch.png")
+        switch_image = switch_image.subsample(1, 1)
+        self.switch = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=switch_image)
+        self.switch.image = switch_image
+        self.switch["text"] = "Switch"
+        self.switch["font"] = myFont
+        self.switch["command"] = self.handle_switch_button
+        self.switch.grid(row=3, column=0, padx=2, pady=2,sticky=N + S + E + W)
+
+
+
+
+
+
+
 
         # Draw horizontal line:       # Row increase 1 because MORE BUTTONS in below row
         self.horizontal1 = Text(self.master, width=30, height=2, bg='#70baff')
-        self.horizontal1.grid(row=3, columnspan=4, sticky=E + W)
+        self.horizontal1.grid(row=4, columnspan=4, sticky=E + W)
 
         # Create Label for stream info:
         self.infoLabel = Label(self.master, width=15, text="VIDEO STATISTIC", font='bold')
-        self.infoLabel.grid(row=4, column=0, padx=4, pady=2)
+        self.infoLabel.grid(row=5, column=0, padx=4, pady=2)
 
 
         # Create DESCRIBE button
@@ -188,7 +195,7 @@ class Client:
         self.describe["text"] = "Describe"
         self.describe["font"] = myFont
         self.describe["command"] = self.displayInfo
-        self.describe.grid(row=4, column=2, padx=2, pady=2,sticky=N + S + E + W)
+        self.describe.grid(row=5, column=2, padx=2, pady=2,sticky=N + S + E + W)
 
 
 
@@ -200,12 +207,57 @@ class Client:
         self.showStat["text"] = "Statistic"
         self.showStat["font"] = myFont
         self.showStat["command"] = self.displayStat
-        self.showStat.grid(row=4, column=3, padx=2, pady=2,sticky=N + S + E + W)
+        self.showStat.grid(row=5, column=3, padx=2, pady=2,sticky=N + S + E + W)
 
 
         # Create TextArea to display stream infomation:
         self.streaminfo = Text(self.master, height=10, width=30)
-        self.streaminfo.grid(row=5, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
+        self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
+
+
+
+
+
+
+
+
+        # NOT HAVE SWITCH
+
+        # # Draw horizontal line:       # Row increase 1 because MORE BUTTONS in below row
+        # self.horizontal1 = Text(self.master, width=30, height=2, bg='#70baff')
+        # self.horizontal1.grid(row=3, columnspan=4, sticky=E + W)
+
+        # # Create Label for stream info:
+        # self.infoLabel = Label(self.master, width=15, text="VIDEO STATISTIC", font='bold')
+        # self.infoLabel.grid(row=4, column=0, padx=4, pady=2)
+
+
+        # # Create DESCRIBE button
+        # describe_image = PhotoImage(file = r"./assets/search.png")
+        # describe_image = describe_image.subsample(1, 1)
+        # self.describe = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=describe_image)
+        # self.describe.image = describe_image
+        # self.describe["text"] = "Describe"
+        # self.describe["font"] = myFont
+        # self.describe["command"] = self.displayInfo
+        # self.describe.grid(row=4, column=2, padx=2, pady=2,sticky=N + S + E + W)
+
+
+
+        # #Create SHOWSTAT button
+        # showstat_image = PhotoImage(file = r"./assets/graph.png")
+        # showstat_image = showstat_image.subsample(1, 1)
+        # self.showStat = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=showstat_image)
+        # self.showStat.image = showstat_image
+        # self.showStat["text"] = "Statistic"
+        # self.showStat["font"] = myFont
+        # self.showStat["command"] = self.displayStat
+        # self.showStat.grid(row=4, column=3, padx=2, pady=2,sticky=N + S + E + W)
+
+
+        # # Create TextArea to display stream infomation:
+        # self.streaminfo = Text(self.master, height=10, width=30)
+        # self.streaminfo.grid(row=5, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
 
 
     def setupMovie(self):
@@ -491,8 +543,9 @@ class Client:
                         self.openRtpPort()                  # de nhan data video frame server gui\
                         
                         # Nhả khoá, mở khoá thread đang đợi ở play button
-                        print('CHECK LOCK: This line is Reply')
-                        lock.release() 
+                        if (lock.locked()):
+                            print('CHECK LOCK: This line is Reply')
+                            lock.release() 
 
 
                     elif self.requestSent == self.PLAY:
