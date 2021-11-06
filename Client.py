@@ -15,7 +15,7 @@ from PIL import Image,ImageTk
 
 CACHE_FILE_NAME = "cache-"
 CACHE_FILE_EXT = ".jpg"
-
+lock = threading.Lock()
 
 class Client:
     # State
@@ -40,7 +40,7 @@ class Client:
     SLOWDOWN = 7
     FORWARD = 8
     BACKWARD = 9
-    
+    SWITCH = 10
 
     # Initiation..
     def __init__(self, master, serveraddr, serverport, rtpport, filename):
@@ -160,6 +160,15 @@ class Client:
         self.forward["command"] = self.forwardVideo
         self.forward.grid(row=2, column=3, padx=2, pady=2,sticky=N + S + E + W)
 
+        # Create SWITCH button
+        switch_image = PhotoImage(file = r"./assets/fward.png")
+        switch_image = forward_image.subsample(1, 1)
+        self.forward = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=switch_image)
+        self.forward.image = forward_image
+        self.forward["text"] = "Switch"
+        self.forward["font"] = myFont
+        self.forward["command"] = self.handle_switch_button
+        self.forward.grid(row=0, column=1, padx=2, pady=2,sticky=N + S + E + W)
 
         # Draw horizontal line:       # Row increase 1 because MORE BUTTONS in below row
         self.horizontal1 = Text(self.master, width=30, height=2, bg='#70baff')
@@ -215,16 +224,20 @@ class Client:
             self.sendRtspRequest(self.PAUSE)
 
     def playMovie(self):
-        """Play button handler."""      
-        # if self.state == self.INIT:
-        #    self.sendRtspRequest(self.SETUP)
-
+        """Play button handler."""  
+        lock.acquire() # Đưa lock về 0 trước, sẵn sàng khoá thread này nếu aquire lần nữa
+        if self.state == self.INIT:
+            self.setupMovie() # Setup - Gởi yêu cầu - Tạo thread nhận reply
+            lock.acquire() # Khoá thread này lại - Thread nhận reply sẽ mở khoá cho nó - Không chạy tiếp nếu chưa thấy reply về
+            print('CHECK LOCK: This line will be after Reply')
+            
         if self.state == self.READY:        # state is ready --> allow play
             # Create a new thread to listen for RTP packets
             threading.Thread(target=self.listenRtp).start()
             self.playEvent = threading.Event()  # Event(): quan ly flag, set() flag true, clear() flag false, wait() block until flag true
             self.playEvent.clear()
             self.sendRtspRequest(self.PLAY)
+        lock.release() # Trả khoá về như mặc định (1)
     
     def increaseSpeed(self):
         """Speedup button handler"""
@@ -473,7 +486,11 @@ class Client:
                         # Update RTSP state.
                         self.state = self.READY
                         # Open RTP port.
-                        self.openRtpPort()                  # de nhan data video frame server gui
+                        self.openRtpPort()                  # de nhan data video frame server gui\
+                        
+                        # Nhả khoá, mở khoá thread đang đợi ở play button
+                        lock.release() 
+
 
                     elif self.requestSent == self.PLAY:
                         # update state
@@ -529,3 +546,5 @@ class Client:
             self.exitClient()
         else:  # When the user presses cancel, resume playing.
             self.playMovie()
+    def handle_switch_button(self):
+        return 1

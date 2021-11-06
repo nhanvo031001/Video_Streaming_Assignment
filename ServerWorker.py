@@ -1,6 +1,6 @@
 from random import randint
 import sys, traceback, threading, socket
-
+import os
 from VideoStream import VideoStream
 from RtpPacket import RtpPacket
 
@@ -34,7 +34,7 @@ class ServerWorker:
 	
 	clientInfo = {}
 	
-	def __init__(self, clientInfo):		# clientInfo include {address, port}
+	def __init__(self, clientInfo):		
 		self.clientInfo = clientInfo
 		self.waitTime = 0.05	# for SPEEDUP, SLOWNDOWN
 		
@@ -153,14 +153,14 @@ class ServerWorker:
 		# process FORWARD request
 		elif requestType == self.FORWARD:
 			print("processing FORWARD\n")
-            # Set the number of frame to forwar
+			# Set the number of frame to forwar
 			self.clientInfo['currentPos'] += self.FRAME_TO_FORWARD
 			self.replyRtsp(self.OK_200, seq[1])
 
 		# process BACKWARD request
 		elif requestType == self.BACKWARD:
 			print("processing BACKWARD\n")
-            # Set the number of frame backward
+			# Set the number of frame backward
 			self.clientInfo['currentPos'] -= self.FRAME_TO_BACKWARD
 			self.replyRtsp(self.OK_200, seq[1])
 			
@@ -180,7 +180,7 @@ class ServerWorker:
 				# Store frame into clientInfo:
 				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
-					address = self.clientInfo['rtspSocket'][1][0]
+					address = self.clientInfo['rtspSocket'][1][0] 
 					port = int(self.clientInfo['rtpPort'])
 					#self.frameSent +=1
 					#self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
@@ -234,7 +234,7 @@ class ServerWorker:
 			info = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'
 			info += "==========================StreamInfo=========================================\n"
 			info += "You are watching a video stream over UDP with RTP packetization\n"
-            # Calculate the accurate frame_being_sent's Number
+			# Calculate the accurate frame_being_sent's Number
 			info += f"You have watch the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
 			info += f"This message is sent over RTSP at: \n"
 			info += f"IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}\n"
@@ -256,3 +256,11 @@ class ServerWorker:
 			print("404 NOT FOUND")
 		elif code == self.CON_ERR_500:
 			print("500 CONNECTION ERROR")
+	
+	def find_all_videos(self):
+		file_list = []
+		for file_name in os.listdir():
+			if file_name.endswith('Mjpeg'):
+				file_list.append(file_name)
+		return file_list
+				
