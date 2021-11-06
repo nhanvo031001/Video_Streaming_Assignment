@@ -1,13 +1,13 @@
 import sys
 from tkinter import Tk
 from Client import Client
-
+from config_client import DEFAULT_SERVER_ADDRESS, DEFAULT_SERVER_PORT, DEFAULT_RTP_PORT, FILE_NAME
 if __name__ == "__main__":
 	try:
-		serverAddr = sys.argv[1]
-		serverPort = sys.argv[2]
-		rtpPort = sys.argv[3]
-		fileName = sys.argv[4]	
+		serverAddr = DEFAULT_SERVER_ADDRESS
+		serverPort = DEFAULT_SERVER_PORT
+		rtpPort = DEFAULT_RTP_PORT
+		fileName = FILE_NAME
 	except:
 		print("[Usage: ClientLauncher.py Server_name Server_port RTP_port Video_file]\n")	
 	

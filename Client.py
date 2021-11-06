@@ -72,7 +72,7 @@ class Client:
         #self.setupMovie()
         self.start_pause_state = 'start'
         self.waiting_to_quit = 0
-        
+        self.ready_to_quit = 0
     def createWidgets(self):
         """Build GUI."""
 
@@ -219,7 +219,7 @@ class Client:
             try:
                 os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)  # Delete the cache image from video
             except:
-                debug_message('DON\'T HAVE CACHE')
+                debug_message('NO CACHED TO DELETE')
 
     def handle_play_pause_button(self):
         if self.start_pause_state == 'start':
@@ -251,11 +251,11 @@ class Client:
         if self.state == self.INIT:
             self.setupMovie() # Setup - Gởi yêu cầu - Tạo thread nhận reply
             lock.acquire() # Khoá thread này lại - Thread nhận reply sẽ mở khoá cho nó - Không chạy tiếp nếu chưa thấy reply về
-            print('CHECK LOCK: This line will be after Reply')
+            debug_message('BLOCK THE MAIN THREAD, WAITING FOR SETUP REPLY')
             
         if self.state == self.READY:        # state is ready --> allow play
             # Create a new thread to listen for RTP packets
-            debug_message('CREATE RTP RECEIVER THREAD')
+            debug_message('START RTP PACKET RECEIVER THREAD')
             threading.Thread(target=self.listenRtp).start()
             self.playEvent = threading.Event()  # Event(): quan ly flag, set() flag true, clear() flag false, wait() block until flag true
             self.playEvent.clear()
@@ -340,7 +340,7 @@ class Client:
                 # close the RTP socket
                 if self.teardownAcked == 1:
                     break
-            debug_message('CLOSE RTP RECEIVER THREAD')
+            debug_message('END RTP PACKET RECEIVER THREAD')
     def writeFrame(self, data):     # return image file, then updateMovie function use to show on GUI
         """Write the received frame to a temp image file. Return the image file."""
         cachename = CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT
@@ -373,7 +373,7 @@ class Client:
         # Setup request
         if requestCode == self.SETUP and self.state == self.INIT:
             threading.Thread(target=self.recvRtspReply).start()
-            debug_message('CREATE RTSP RECEIVER THREAD')
+            debug_message('START RTSP REPLY RECEIVER THREAD')
             # Update RTSP sequence number.
             self.rtspSeq = self.rtspSeq + 1
             # Write the RTSP request to be sent.
@@ -486,17 +486,19 @@ class Client:
                 self.rtpSocket.shutdown(socket.SHUT_RDWR)
                 self.rtpSocket.close()
                 debug_message('CLOSE RTP SOCKET')
-                
+                if self.waiting_to_quit:
+                    break
                 play_image = PhotoImage(file = r"./assets/play-button.png")
                 play_image = play_image.subsample(1, 1)
                 self.start_pause_state = 'start'
                 self.play_pause_button.image = play_image
                 self.play_pause_button["image"] = play_image
                 self.play_pause_button["text"] = "Play"
-                break
-        if lock.locked(): 
+                break;
+        if (self.waiting_to_quit):
+            debug_message('RECEIVED TEARDOWN REPLY, RELEASE LOCK')
             lock.release()
-        debug_message('CLOSE RTSP RECEIVER THREAD')
+        debug_message('END RTSP REPLY RECEIVER THREAD')
 
     def parseRtspReply(self, data):     # get session id and sequence number of video
         """Parse the RTSP reply from the server."""
@@ -522,7 +524,7 @@ class Client:
                         
                         # Nhả khoá, mở khoá thread đang đợi ở play button
                         if (lock.locked()):
-                            print('CHECK LOCK: This line is Reply')
+                            debug_message('RECEIVED SETUP REPLY, RELEASE LOCK')
                             lock.release() 
 
 
@@ -559,7 +561,6 @@ class Client:
         # -------------
         # Create a new datagram socket to receive RTP packets from the server
         # self.rtpSocket = ...
-        debug_message('IN OPEN RTP')
         self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         debug_message('CREATE RTP SOCKET')
         # Set the timeout value of the socket to 0.5sec
@@ -589,12 +590,18 @@ class Client:
         if tkinter.messagebox.askokcancel('Warning!',"Are you sure to quit?"):
             try:
                 self.exitClient() # send TEARDOWN REQUEST
-                self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket
+                if (self.state != self.INIT):
+                    self.waiting_to_quit = 1
+                    debug_message('BLOCK THE MAIN THREAD, WAITING REPLY FOR TEARDOWN REPLY')
+                    lock.acquire()
+                    lock.acquire()
+                debug_message('CLOSE RTSP SOCKET')
+                self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket)
                 self.rtspSocket.close()  
             except:
                 debug_message('CAN NOT CONNECT TO SERVER')
             self.master.destroy()  # Close the gui window   
-            sys.exit()              
+            #sys.exit()           
         else:  # When the user presses cancel, resume playing.
             self.playMovie()
     

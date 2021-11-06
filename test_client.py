@@ -1,4 +1,4 @@
-import socket
+import socket, sys
 from tkinter import Message
 while True:
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -14,3 +14,4 @@ while True:
     if message == 'exit':
         udp_socket.close()
         break
+sys.exit()
