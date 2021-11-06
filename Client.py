@@ -320,6 +320,7 @@ class Client:
                 if self.teardownAcked == 1:
                     self.rtpSocket.shutdown(socket.SHUT_RDWR)
                     self.rtpSocket.close()
+                    self.state = self.INIT
                     break
 
     def writeFrame(self, data):     # return image file, then updateMovie function use to show on GUI
@@ -549,4 +550,6 @@ class Client:
         else:  # When the user presses cancel, resume playing.
             self.playMovie()
     def handle_switch_button(self):
+        if self.state == self.INIT:
+            return
         return 1
