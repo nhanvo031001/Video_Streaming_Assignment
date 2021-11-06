@@ -15,6 +15,7 @@ from PIL import Image,ImageTk
 
 CACHE_FILE_NAME = "cache-"
 CACHE_FILE_EXT = ".jpg"
+
 lock = threading.Lock()
 
 class Client:
@@ -489,6 +490,7 @@ class Client:
                         self.openRtpPort()                  # de nhan data video frame server gui\
                         
                         # Nhả khoá, mở khoá thread đang đợi ở play button
+                        print('CHECK LOCK: This line is Reply')
                         lock.release() 
 
 
