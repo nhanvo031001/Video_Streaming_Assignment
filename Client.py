@@ -11,13 +11,13 @@ import urllib
 import urllib.request
 import tkinter as tk
 
-from PIL import Image,ImageTk
 
 CACHE_FILE_NAME = "cache-"
 CACHE_FILE_EXT = ".jpg"
 
 lock = threading.Lock()
-
+def debug_message(mssg):
+    print ('\nDEBUG MESSAGE: ' + str(mssg) + '\n')
 class Client:
     # State
     INIT = 0
@@ -70,7 +70,8 @@ class Client:
         self.receivedTotalFrameNum = FALSE      # # when receiving reply from server ---> will show statistic
         #self.sendRtspRequest(self.SETUP)       # for setup automatically
         #self.setupMovie()
-        
+        self.start_pause_state = 'start'
+        self.waiting_to_quit = 0
         
     def createWidgets(self):
         """Build GUI."""
@@ -89,32 +90,23 @@ class Client:
         self.setup["text"] = "Setup"
         self.setup["font"] = myFont
         self.setup["command"] = self.setupMovie
-        self.setup.grid(row=1, column=0, padx=2, pady=2,sticky=N + S + E + W)
+        self.setup.grid(row=1, column=1, padx=2, pady=2,sticky=N + S + E + W)
 
-        # Create Play button
+        # Create Play Pause button
         play_image = PhotoImage(file = r"./assets/play-button.png")
         play_image = play_image.subsample(1, 1)
-        self.play = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=play_image)
-        self.play.image = play_image
-        self.play["text"] = "Play"
-        self.play["font"] = myFont
-        self.play["command"] = self.playMovie
-        self.play.grid(row=1, column=1, padx=2, pady=2,sticky=N + S + E + W)
+        self.play_pause_button = Button(self.master,width = 150, compound = LEFT, padx=3, pady=3, bg='#09aeae', image=play_image)
+        self.play_pause_button.image = play_image
+        self.play_pause_button["text"] = "Play"
+        self.play_pause_button["font"] = myFont
+        self.play_pause_button["command"] = self.handle_play_pause_button
+        self.play_pause_button.grid(row=1, column=2, padx=2, pady=2,sticky=N + S + E + W)
 
-        # Create Pause button
-        pause_image = PhotoImage(file = r"./assets/icons8-pause-32.png")
-        pause_image = pause_image.subsample(1, 1)
-        self.pause = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=pause_image)
-        self.pause.image = pause_image
-        self.pause["text"] = "Pause"
-        self.pause["font"] = myFont
-        self.pause["command"] = self.pauseMovie
-        self.pause.grid(row=1, column=2, padx=2, pady=2,sticky=N + S + E + W)
 
         # Create Teardown button
         teardown_image = PhotoImage(file = r"./assets/icons8-stop-32.png")
         teardown_image = teardown_image.subsample(1, 1)
-        self.teardown = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image=teardown_image)
+        self.teardown = Button(self.master,width =150 , compound = LEFT, padx=3, pady=3, bg='#09aeae', image= teardown_image)
         self.teardown.image = teardown_image
         self.teardown["text"] = "Teardown"
         self.teardown["font"] = myFont
@@ -169,7 +161,7 @@ class Client:
         self.switch["text"] = "Switch"
         self.switch["font"] = myFont
         self.switch["command"] = self.handle_switch_button
-        self.switch.grid(row=3, column=0, padx=2, pady=2,sticky=N + S + E + W)
+        self.switch.grid(row=1, column=0, padx=2, pady=2,sticky=N + S + E + W)
 
 
 
@@ -215,51 +207,6 @@ class Client:
         self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
 
 
-
-
-
-
-
-
-        # NOT HAVE SWITCH
-
-        # # Draw horizontal line:       # Row increase 1 because MORE BUTTONS in below row
-        # self.horizontal1 = Text(self.master, width=30, height=2, bg='#70baff')
-        # self.horizontal1.grid(row=3, columnspan=4, sticky=E + W)
-
-        # # Create Label for stream info:
-        # self.infoLabel = Label(self.master, width=15, text="VIDEO STATISTIC", font='bold')
-        # self.infoLabel.grid(row=4, column=0, padx=4, pady=2)
-
-
-        # # Create DESCRIBE button
-        # describe_image = PhotoImage(file = r"./assets/search.png")
-        # describe_image = describe_image.subsample(1, 1)
-        # self.describe = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=describe_image)
-        # self.describe.image = describe_image
-        # self.describe["text"] = "Describe"
-        # self.describe["font"] = myFont
-        # self.describe["command"] = self.displayInfo
-        # self.describe.grid(row=4, column=2, padx=2, pady=2,sticky=N + S + E + W)
-
-
-
-        # #Create SHOWSTAT button
-        # showstat_image = PhotoImage(file = r"./assets/graph.png")
-        # showstat_image = showstat_image.subsample(1, 1)
-        # self.showStat = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=showstat_image)
-        # self.showStat.image = showstat_image
-        # self.showStat["text"] = "Statistic"
-        # self.showStat["font"] = myFont
-        # self.showStat["command"] = self.displayStat
-        # self.showStat.grid(row=4, column=3, padx=2, pady=2,sticky=N + S + E + W)
-
-
-        # # Create TextArea to display stream infomation:
-        # self.streaminfo = Text(self.master, height=10, width=30)
-        # self.streaminfo.grid(row=5, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
-
-
     def setupMovie(self):
         """Setup button handler."""
         if self.state == self.INIT:     # state is INIT --> allow set up
@@ -267,10 +214,32 @@ class Client:
 
     def exitClient(self):
         """Teardown button handler."""
-        self.sendRtspRequest(self.TEARDOWN)     # send request to close
-        self.master.destroy()  # Close the gui window
-        os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)  # Delete the cache image from video
+        if self.state != self.INIT:
+            self.sendRtspRequest(self.TEARDOWN)     # send request to close
+            try:
+                os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)  # Delete the cache image from video
+            except:
+                debug_message('DON\'T HAVE CACHE')
 
+    def handle_play_pause_button(self):
+        if self.start_pause_state == 'start':
+            self.start_pause_state = 'pause'
+            pause_image = PhotoImage(file = r"./assets/icons8-pause-32.png")
+            pause_image = pause_image.subsample(1, 1)
+            self.play_pause_button["image"] = pause_image
+            self.play_pause_button.image = pause_image
+            self.play_pause_button["text"] = "Pause"
+            self.playMovie()
+        else:
+            play_image = PhotoImage(file = r"./assets/play-button.png")
+            play_image = play_image.subsample(1, 1)
+            self.start_pause_state = 'start'
+            self.play_pause_button.image = play_image
+            self.play_pause_button["image"] = play_image
+            self.play_pause_button["text"] = "Play"
+            self.pauseMovie()
+
+    
     def pauseMovie(self):
         """Pause button handler."""
         if self.state == self.PLAYING:      # state is playing --> allow pause
@@ -286,6 +255,7 @@ class Client:
             
         if self.state == self.READY:        # state is ready --> allow play
             # Create a new thread to listen for RTP packets
+            debug_message('CREATE RTP RECEIVER THREAD')
             threading.Thread(target=self.listenRtp).start()
             self.playEvent = threading.Event()  # Event(): quan ly flag, set() flag true, clear() flag false, wait() block until flag true
             self.playEvent.clear()
@@ -366,15 +336,11 @@ class Client:
                 # Stop listening upon requesting PAUSE or TEARDOWN
                 if self.playEvent.isSet():
                     break
-
                 # Upon receiving ACK for TEARDOWN request,
                 # close the RTP socket
                 if self.teardownAcked == 1:
-                    self.rtpSocket.shutdown(socket.SHUT_RDWR)
-                    self.rtpSocket.close()
-                    self.state = self.INIT
                     break
-
+            debug_message('CLOSE RTP RECEIVER THREAD')
     def writeFrame(self, data):     # return image file, then updateMovie function use to show on GUI
         """Write the received frame to a temp image file. Return the image file."""
         cachename = CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT
@@ -393,6 +359,7 @@ class Client:
     def connectToServer(self):
         """Connect to the Server. Start a new RTSP/TCP session."""
         self.rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        debug_message('CREATE RTSP SOCKET')
         try:
             self.rtspSocket.connect((self.serverAddr, self.serverPort))
         except:
@@ -403,10 +370,10 @@ class Client:
         # -------------
         # TO COMPLETE
         # -------------
-
         # Setup request
         if requestCode == self.SETUP and self.state == self.INIT:
             threading.Thread(target=self.recvRtspReply).start()
+            debug_message('CREATE RTSP RECEIVER THREAD')
             # Update RTSP sequence number.
             self.rtspSeq = self.rtspSeq + 1
             # Write the RTSP request to be sent.
@@ -515,14 +482,25 @@ class Client:
             if reply:
                 self.parseRtspReply(reply.decode("utf-8"))
 
-            # Close the RTSP socket upon requesting Teardown
             if self.requestSent == self.TEARDOWN:
-                self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket
-                self.rtspSocket.close()         # close socket
+                self.rtpSocket.shutdown(socket.SHUT_RDWR)
+                self.rtpSocket.close()
+                debug_message('CLOSE RTP SOCKET')
+                
+                play_image = PhotoImage(file = r"./assets/play-button.png")
+                play_image = play_image.subsample(1, 1)
+                self.start_pause_state = 'start'
+                self.play_pause_button.image = play_image
+                self.play_pause_button["image"] = play_image
+                self.play_pause_button["text"] = "Play"
                 break
+        if lock.locked(): 
+            lock.release()
+        debug_message('CLOSE RTSP RECEIVER THREAD')
 
     def parseRtspReply(self, data):     # get session id and sequence number of video
         """Parse the RTSP reply from the server."""
+        
         lines = data.split('\n')
         seqNum = int(lines[1].split(' ')[1])
 
@@ -581,8 +559,9 @@ class Client:
         # -------------
         # Create a new datagram socket to receive RTP packets from the server
         # self.rtpSocket = ...
+        debug_message('IN OPEN RTP')
         self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+        debug_message('CREATE RTP SOCKET')
         # Set the timeout value of the socket to 0.5sec
         # ...
         self.rtpSocket.settimeout(0.5)
@@ -595,14 +574,27 @@ class Client:
         except:
             tkinter.messagebox.showwarning('Unable to Bind', 'Unable to bind PORT=%d' % self.rtpPort)
 
-    def handler(self):
-        """Handler on explicitly closing the GUI window."""
-        self.pauseMovie()
-        if tkinter.messagebox.askokcancel("Are you sure you want to quit?"):
-            self.exitClient()
-        else:  # When the user presses cancel, resume playing.
-            self.playMovie()
+    
     def handle_switch_button(self):
         if self.state == self.INIT:
             return
         return 1
+    
+    
+    
+    
+    def handler(self):
+        """Handler on explicitly closing the GUI window."""
+        self.pauseMovie()
+        if tkinter.messagebox.askokcancel('Warning!',"Are you sure to quit?"):
+            try:
+                self.exitClient() # send TEARDOWN REQUEST
+                self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket
+                self.rtspSocket.close()  
+            except:
+                debug_message('CAN NOT CONNECT TO SERVER')
+            self.master.destroy()  # Close the gui window   
+            sys.exit()              
+        else:  # When the user presses cancel, resume playing.
+            self.playMovie()
+    

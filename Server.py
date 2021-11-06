@@ -1,12 +1,12 @@
 import sys, socket
-
+from config_server import DEFAULT_SERVER_PORT
 from ServerWorker import ServerWorker
 
 class Server:	
 	
 	def main(self):
 		try:
-			SERVER_PORT = int(sys.argv[1])
+			SERVER_PORT = DEFAULT_SERVER_PORT
 		except:
 			print("[Usage: Server.py Server_port]\n")
 		rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -41,9 +41,9 @@ class ServerWorker:
 		# Create a dict to store data frame for forward:
 		self.frameDict = {}
 		self.clientInfo['currentPos'] =0 	# for DESCRIBE
-
+		self.rtp_socket_opened = 0;
 		self.frameSent = 0		# for Statistic button
-		
+		self.clientInfo['session'] = 0;
 		
 	def run(self):
 		threading.Thread(target=self.recvRtspRequest).start()
@@ -83,7 +83,8 @@ class ServerWorker:
 					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 				
 				# Generate a randomized RTSP session ID
-				self.clientInfo['session'] = randint(100000, 999999)
+				if (self.clientInfo['session'] == 0):
+					self.clientInfo['session'] = randint(100000, 999999)
 				
 				# Send RTSP reply
 				self.replyRtsp(self.OK_200, seq[1])
@@ -99,7 +100,7 @@ class ServerWorker:
 				
 				# Create a new socket for RTP/UDP
 				self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				
+				self.rtp_socket_opened = 1;
 				self.replyRtsp(self.OK_200, seq[1])
 				
 				# Create a new thread and start sending RTP packets
@@ -120,13 +121,13 @@ class ServerWorker:
 		# Process TEARDOWN request
 		elif requestType == self.TEARDOWN:
 			print("processing TEARDOWN\n")
-
-			self.clientInfo['event'].set()
 			
 			self.replyRtsp(self.OK_200, seq[1])
-			
+			self.state = self.INIT
 			# Close the RTP socket
-			self.clientInfo['rtpSocket'].close()
+			if (self.rtp_socket_opened):
+				self.clientInfo['rtpSocket'].close()
+				self.rtp_socket_opened = 0
 		
 		# Process SPEEDUP request
 		elif requestType == self.SPEEDUP:
@@ -167,13 +168,13 @@ class ServerWorker:
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
-			#self.clientInfo['event'].wait(0.05) 
 			self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
 			
 			# Stop sending if request is PAUSE or TEARDOWN
 			if self.clientInfo['event'].isSet(): 
 				break 
-				
+			if self.rtp_socket_opened == 0:
+				break
 			data = self.clientInfo['videoStream'].nextFrame()
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
