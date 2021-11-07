@@ -73,6 +73,7 @@ class Client:
         self.start_pause_state = 'start'
         self.waiting_to_quit = 0
         self.receive_rtsp_reply_thread_created = 0
+        self.safe_to_setup = 1;
     def createWidgets(self):
         """Build GUI."""
 
@@ -209,8 +210,10 @@ class Client:
 
     def setupMovie(self):
         """Setup button handler."""
-        if self.state == self.INIT:     # state is INIT --> allow set up
+        if self.state == self.INIT and self.safe_to_setup:     # state is INIT --> allow set up
+            self.safe_to_setup = 0
             self.sendRtspRequest(self.SETUP)    # send request to set up movie
+            
 
     def exitClient(self):
         """Teardown button handler."""
@@ -506,6 +509,7 @@ class Client:
                 self.play_pause_button.image = play_image
                 self.play_pause_button["image"] = play_image
                 self.play_pause_button["text"] = "Play"
+                self.safe_to_setup = 1;
                 break;
         debug_message('END RTSP REPLY RECEIVER THREAD')
 
