@@ -1,3 +1,5 @@
+import cv2
+
 class VideoStream:
 	def __init__(self, filename):
 		self.filename = filename
@@ -22,4 +24,31 @@ class VideoStream:
 		"""Get frame number."""
 		return self.frameNum
 	
-	
+	def take_video_infomation(self):
+		cv2video = cv2.VideoCapture(self.filename)
+		self.height = cv2video.get(cv2.CAP_PROP_FRAME_HEIGHT)
+		self.width  = cv2video.get(cv2.CAP_PROP_FRAME_WIDTH) 
+		self.frames_per_second = cv2video.get(cv2.CAP_PROP_FPS)
+		self.total_frames = self.count_frames_manual(cv2video)
+		self.video_encode = cv2video.getBackendName()
+		self.total_duration = self.total_frames / self.frames_per_second
+
+	def count_frames_manual(self, video):
+    	# initialize the total number of frames read
+		total = 0
+
+		# loop over the frames of the video
+		while True:
+			# grab the current frame
+			(grabbed, frame) = video.read()
+	 
+			# check to see if we have reached the end of the
+			# video
+			if not grabbed:
+				break
+
+			# increment the total number of frames read
+			total += 1
+
+		# return the total number of frames in the video file
+		return total

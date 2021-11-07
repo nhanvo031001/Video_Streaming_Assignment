@@ -325,10 +325,7 @@ class Client:
                     self.sizeData = self.sizeData + sys.getsizeof(data) # for statistic, ratio
 
                     currFrameNbr = rtpPacket.seqNum()       # frame video received from server
-                    
-                    print(currFrameNbr)
-                    print(self.frameNbr)
-                    
+                                        
                     print("Current Sequence Number: " + str(currFrameNbr))
 
                     self.curSeqNum = rtpPacket.seqNum()

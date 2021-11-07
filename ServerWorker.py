@@ -37,7 +37,7 @@ class ServerWorker:
 	
 	def __init__(self, clientInfo):		
 		self.clientInfo = clientInfo
-		self.waitTime = 0.05	# for SPEEDUP, SLOWNDOWN
+		self.waitTime = 0	# for SPEEDUP, SLOWNDOWN
 		
 		# Create a dict to store data frame for forward:
 		self.frameDict = {}
@@ -84,6 +84,8 @@ class ServerWorker:
 				
 				try:
 					self.clientInfo['videoStream'] = VideoStream(filename)
+					self.clientInfo['videoStream'].take_video_infomation()
+					self.waitTime = 1/ self.clientInfo['videoStream'].frames_per_second
 					self.state = self.READY
 				except IOError:
 					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
@@ -160,15 +162,18 @@ class ServerWorker:
 		# process FORWARD request
 		elif requestType == self.FORWARD:
 			print("processing FORWARD\n")
-			# Set the number of frame to forwar
-			self.clientInfo['currentPos'] += self.FRAME_TO_FORWARD
+			# Set the number of frame to forward
+			
+			self.clientInfo['currentPos'] = min(self.clientInfo['currentPos'] + self.FRAME_TO_FORWARD, self.clientInfo['videoStream'].total_frames - self.clientInfo['videoStream'].frameNbr())
+			
 			self.replyRtsp(self.OK_200, seq[1])
 
 		# process BACKWARD request
 		elif requestType == self.BACKWARD:
 			print("processing BACKWARD\n")
 			# Set the number of frame backward
-			self.clientInfo['currentPos'] -= self.FRAME_TO_BACKWARD
+			self.clientInfo['currentPos'] = max(self.clientInfo['currentPos'] - self.FRAME_TO_BACKWARD, 0 - self.clientInfo['videoStream'].frameNbr())
+			
 			self.replyRtsp(self.OK_200, seq[1])
 		elif requestType == self.EXIT:
 			self.client_exit = 1 # no reply
@@ -182,9 +187,8 @@ class ServerWorker:
 			if self.rtp_socket_opened == 0: # đóng socket rồi (tức TEARDOWN) thì end, không gởi nữa
 				break
 			data = self.clientInfo['videoStream'].nextFrame()
-			if data: 
+			if data or self.clientInfo['currentPos'] < 0: # có frame hoặc hết frame nhưng yêu cầu coi lại 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
-				print(frameNumber)
 				# Store frame into clientInfo:
 				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
