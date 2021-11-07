@@ -325,6 +325,10 @@ class Client:
                     self.sizeData = self.sizeData + sys.getsizeof(data) # for statistic, ratio
 
                     currFrameNbr = rtpPacket.seqNum()       # frame video received from server
+                    
+                    print(currFrameNbr)
+                    print(self.frameNbr)
+                    
                     print("Current Sequence Number: " + str(currFrameNbr))
 
                     self.curSeqNum = rtpPacket.seqNum()
@@ -340,7 +344,7 @@ class Client:
                 # close the RTP socket
                 if self.teardownAcked == 1:
                     break
-            debug_message('END RTP PACKET RECEIVER THREAD')
+        debug_message('END RTP PACKET RECEIVER THREAD')
     def writeFrame(self, data):     # return image file, then updateMovie function use to show on GUI
         """Write the received frame to a temp image file. Return the image file."""
         cachename = CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT
@@ -420,6 +424,7 @@ class Client:
             request += f"Session: {self.sessionId}"
             # Keep track of the sent request.
             # self.requestSent = ...
+            self.frameNbr = 0
             self.requestSent = self.TEARDOWN
 
         # SPEEDUP request
