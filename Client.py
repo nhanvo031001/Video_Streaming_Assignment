@@ -336,10 +336,12 @@ class Client:
             except:
                 # Stop listening upon requesting PAUSE or TEARDOWN
                 if self.playEvent.isSet():
+                    print('1')
                     break
                 # Upon receiving ACK for TEARDOWN request,
                 # close the RTP socket
                 if self.teardownAcked == 1:
+                    print('2')
                     break
         debug_message('END RTP PACKET RECEIVER THREAD')
     def writeFrame(self, data):     # return image file, then updateMovie function use to show on GUI
@@ -526,6 +528,7 @@ class Client:
                     if self.requestSent == self.SETUP:
                         # Update RTSP state.
                         self.state = self.READY
+                        self.teardownAcked = 0
                         # Open RTP port.
                         self.openRtpPort()                  # de nhan data video frame server gui\
                         

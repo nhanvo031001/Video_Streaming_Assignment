@@ -186,9 +186,9 @@ class ServerWorker:
 				break 
 			if self.rtp_socket_opened == 0: # đóng socket rồi (tức TEARDOWN) thì end, không gởi nữa
 				break
-			data = self.clientInfo['videoStream'].nextFrame()
-			if data or self.clientInfo['currentPos'] < 0: # có frame hoặc hết frame nhưng yêu cầu coi lại 
-				frameNumber = self.clientInfo['videoStream'].frameNbr()
+			data = self.clientInfo['videoStream'].nextFrame() #55
+			if data:
+				frameNumber = self.clientInfo['videoStream'].frameNbr() # 55
 				# Store frame into clientInfo:
 				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
@@ -201,21 +201,35 @@ class ServerWorker:
 					elif self.clientInfo['currentPos'] == 0:
 						self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
 						self.frameSent += 1
+						print('Send: ' + str(frameNumber))
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber), (address, port))
 					else:
-						while self.clientInfo['currentPos'] < 0:
+						while self.clientInfo['currentPos'] < 0: # -20 --> -1 35 --> 54
 							self.clientInfo['event'].wait(self.waitTime)
 							frame_prior = frameNumber + self.clientInfo['currentPos']		# currentPos hien tai dang < 0
 							data_prior = self.frameDict[frame_prior]		# lay video frame da luu trong array frameDict
 							#print(f"currentPOS {self.clientInfo['currentPos']}")
 							self.clientInfo['currentPos'] += 1
 							self.frameSent += 1
+							print('Send: ' + str(frame_prior))
 							self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))
 				except:
 					print("RTP sending failed!")
 					#print('-'*60)
 					#traceback.print_exc(file=sys.stdout)
 					#print('-'*60)
+			elif self.clientInfo['currentPos'] < 0: # Yêu cầu coi lại
+				try:
+					while self.clientInfo['currentPos'] < 1:
+						self.clientInfo['event'].wait(self.waitTime)
+						frame_prior = frameNumber + self.clientInfo['currentPos']		# currentPos hien tai dang < 0
+						data_prior = self.frameDict[frame_prior]		# lay video frame da luu trong array frameDict
+						#print(f"currentPOS {self.clientInfo['currentPos']}")
+						self.clientInfo['currentPos'] += 1
+						self.frameSent += 1
+						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))
+				except:
+					print("RTP sending failed!")
 
 	def makeRtp(self, payload, frameNbr):
 		"""RTP-packetize the video data."""
