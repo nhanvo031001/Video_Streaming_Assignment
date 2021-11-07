@@ -184,6 +184,7 @@ class ServerWorker:
 			data = self.clientInfo['videoStream'].nextFrame()
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
+				print(frameNumber)
 				# Store frame into clientInfo:
 				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
@@ -207,7 +208,7 @@ class ServerWorker:
 							self.frameSent += 1
 							self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))
 				except:
-					print("Connection Error")
+					print("RTP sending failed!")
 					#print('-'*60)
 					#traceback.print_exc(file=sys.stdout)
 					#print('-'*60)

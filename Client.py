@@ -604,9 +604,7 @@ class Client:
                 self.exitClient() # send TEARDOWN REQUEST
                 if (self.receive_rtsp_reply_thread_created):
                     self.receive_rtsp_reply_thread.join()
-                print('2')
                 self.notify_exit_to_server() # Thông báo cho server thu hồi thread nghe request từ client
-                print('3')
                 debug_message('CLOSE RTSP SOCKET')
                 self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket)
                 self.rtspSocket.close()  
