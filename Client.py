@@ -598,7 +598,7 @@ class Client:
                         current_position_video = str( int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration)) )
                         time_remaining = str( int(float(self.total_duration)) - (int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration))) )
 
-                        streaminfos = lines[3] + '\n' + lines[4] + '\n' + lines[5] + '\n' + lines[6] + '\n' + lines[
+                        streaminfos = lines[3] + '\n' + lines[4] + '\n' + "You have watched the video to frame: " + str(self.frameNbr) + '\n' + lines[6] + '\n' + lines[
                             7] + '\n' + lines[8] + '\n' + lines[9] + '\n' + lines[10] + '\n' + lines[11
                             ] + '\n' + "Current position: " + current_position_video + '\n' + "Remaining time: " + time_remaining + '\n' + lines[12] + '\n' + '\n'
                         self.streaminfo.insert(END, streaminfos)
