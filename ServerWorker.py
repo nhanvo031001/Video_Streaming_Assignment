@@ -253,7 +253,7 @@ class ServerWorker:
 		# Special case for DESCRIBE reply
 		if code == self.OK_200_DESCRIBE:
 			info = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'
-			info += "==========================StreamInfo=========================================\n"
+			info += "=========StreamInfo=========\n"
 			info += "You are watching a video stream over UDP with RTP packetization\n"
 			# Calculate the accurate frame_being_sent's Number
 			info += f"You have watched the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
@@ -264,7 +264,7 @@ class ServerWorker:
 			info += f"This message is sent over RTSP at: \n"
 			info += f"IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}\n"
 			info += f"This message is sent over utf8-encode\n"
-			info += "=============================================================================\n"
+			info += "============================\n"
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(info.encode())
 		

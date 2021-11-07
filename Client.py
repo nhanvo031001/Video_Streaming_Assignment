@@ -204,7 +204,8 @@ class Client:
 
 
         # Create TextArea to display stream infomation:
-        self.streaminfo = Text(self.master, height=10, width=30)
+        self.streaminfo = Text(self.master, height=13, width=30)
+        self.streaminfo.configure(font=("Courier", 13))
         self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
 
 
@@ -295,12 +296,14 @@ class Client:
             while True:
                 if self.receivedTotalFrameNum:
                     break
-            stat_to_show = "-------------------------------Statistic-------------------------------------\n"
-            stat_to_show += f"Current Seq Num:{self.curSeqNum} \t \t StreamDuration:{self.curSecond}\n"
-            stat_to_show += f"Received Frame Count: {self.count} \t \t Total Frame Server Sent: {self.frameServerSent}\n"
-            stat_to_show += f"Packet Loss Rate: {1 - (self.count / self.frameServerSent)}"
-            stat_to_show += f"\t \t Ratio: {self.sizeData / self.curSecond} bytes per second\n"
-            stat_to_show += "-----------------------------------------------------------------------------\n"
+            stat_to_show = "---------Statistic---------\n"
+            # stat_to_show += f"Current Seq Num:{self.curSeqNum} \t \t StreamDuration:{self.curSecond}\n"
+            stat_to_show += f"Current Seq Num:{self.curSeqNum} \t \n"
+            stat_to_show += f"Received Frame Count: {self.count} \t \n"
+            stat_to_show += f"Total Frame Server Sent: {self.frameServerSent}\n"
+            stat_to_show += f"Packet Loss Rate: {1 - (self.count / self.frameServerSent)}\n"
+            stat_to_show += f"Ratio: {self.sizeData / self.curSecond} bytes per second\n"
+            stat_to_show += "--------------------------\n"
             stat_to_show += '\n'
             self.streaminfo.insert(END, stat_to_show)
             # Remove the FLAG for next time
@@ -309,13 +312,21 @@ class Client:
     def listenRtp(self):
         """Listen for RTP packets."""
         # Get time before receiving the packet
+        
+        # mới bỏ
         before = datetime.now()         # for caculate bytes/seconds (ratio)
+        
         while True:
             try:
                 data = self.rtpSocket.recv(20480)       # receive rtp packet from server
                 # Keep track of the number of data frames received
                 self.count = self.count + 1     # count for frames received, for statistic
                 if data:
+                    
+                    
+                    # 
+
+                    
                     # Depacket the RtpPacket, in RtpPacket.py
                     rtpPacket = RtpPacket()
                     rtpPacket.decode(data)
@@ -329,6 +340,8 @@ class Client:
                     # self.curSecond += float(curResult[0]) * 3600 + float(
                     #     curResult[1]) * 60 + float(curResult[2])
 
+
+                    # chỉnh lại cách tính curSecond
                     curResult = str(currentTime - before).split(':')
                     before = currentTime
                     self.curSecond += float(curResult[0]) * 3600 + float(
@@ -572,8 +585,22 @@ class Client:
 
                     elif self.requestSent == self.DESCRIBE:
                         print("Client parsing DESCRIBE")
+                        
+                        self.total_frame = lines[6].split(' ')[2]
+                        self.total_duration = lines[7].split(' ')[2]
+
+                        #print("total frame: ", self.total_frame)
+                        #print("total duration: ", self.total_duration)
+
+                        # print("CURRENT POSITION VIDEO: ", int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration)))
+                        # print("TIME REMAINING: ", int(float(self.total_duration)) - (int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration))) )
+                        
+                        current_position_video = str( int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration)) )
+                        time_remaining = str( int(float(self.total_duration)) - (int(self.frameNbr) / int(self.total_frame) * int(float(self.total_duration))) )
+
                         streaminfos = lines[3] + '\n' + lines[4] + '\n' + lines[5] + '\n' + lines[6] + '\n' + lines[
-                            7] + '\n' + lines[8] + '\n' + lines[9] + '\n' + lines[10] + '\n' + lines[11] + '\n' + lines[12] + '\n' + '\n'
+                            7] + '\n' + lines[8] + '\n' + lines[9] + '\n' + lines[10] + '\n' + lines[11
+                            ] + '\n' + "Current position: " + current_position_video + '\n' + "Remaining time: " + time_remaining + '\n' + lines[12] + '\n' + '\n'
                         self.streaminfo.insert(END, streaminfos)
 
                     elif self.requestSent == self.SHOWSTAT:
