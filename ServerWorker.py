@@ -178,7 +178,7 @@ class ServerWorker:
 		elif requestType == self.EXIT:
 			self.client_exit = 1 # no reply
 			
-	def sendRtp(self):
+	def sendRtp(self): #ABCDEF
 		"""Send RTP packets over UDP."""
 		while True:
 			# Stop sending if request is PAUSE or TEARDOWN
