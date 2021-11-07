@@ -42,7 +42,7 @@ class Client:
     FORWARD = 8
     BACKWARD = 9
     SWITCH = 10
-
+    EXIT = 11
     # Initiation..
     def __init__(self, master, serveraddr, serverport, rtpport, filename):
         self.master = master        # master is GUI
@@ -72,7 +72,7 @@ class Client:
         #self.setupMovie()
         self.start_pause_state = 'start'
         self.waiting_to_quit = 0
-        self.ready_to_quit = 0
+        self.receive_rtsp_reply_thread_created = 0
     def createWidgets(self):
         """Build GUI."""
 
@@ -329,7 +329,7 @@ class Client:
 
                     self.curSeqNum = rtpPacket.seqNum()
                     if currFrameNbr > self.frameNbr:  # Discard the late packet
-                         self.frameNbr = currFrameNbr
+                        self.frameNbr = currFrameNbr
                     # Dont tab this line in, or else it will create auto skip when backward
                     self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
             except:
@@ -372,8 +372,10 @@ class Client:
         # -------------
         # Setup request
         if requestCode == self.SETUP and self.state == self.INIT:
-            threading.Thread(target=self.recvRtspReply).start()
             debug_message('START RTSP REPLY RECEIVER THREAD')
+            self.receive_rtsp_reply_thread = threading.Thread(target=self.recvRtspReply)
+            self.receive_rtsp_reply_thread_created = 1
+            self.receive_rtsp_reply_thread.start()
             # Update RTSP sequence number.
             self.rtspSeq = self.rtspSeq + 1
             # Write the RTSP request to be sent.
@@ -466,7 +468,12 @@ class Client:
             request += f"Session: {self.sessionId}"
             self.frameNbr -= self.FRAME_TO_BACKWARD
             self.requestSent = self.BACKWARD
-
+        elif requestCode == self.EXIT:
+            self.rtspSeq += 1
+            request = f"EXIT {self.fileName} RTSP/1.0\n"
+            request += f"Cseq: {self.rtspSeq}\n"
+            request += f"Session: {self.sessionId}"
+            self.requestSent = self.EXIT
         else:
             return
 
@@ -486,7 +493,8 @@ class Client:
                 self.rtpSocket.shutdown(socket.SHUT_RDWR)
                 self.rtpSocket.close()
                 debug_message('CLOSE RTP SOCKET')
-                if self.waiting_to_quit:
+                # Kiểm tra nếu main thread (đang chạy giao diện) đang waiting để quit thì set giao diện lại sẽ gây lỗi
+                if self.waiting_to_quit: 
                     break
                 play_image = PhotoImage(file = r"./assets/play-button.png")
                 play_image = play_image.subsample(1, 1)
@@ -495,9 +503,6 @@ class Client:
                 self.play_pause_button["image"] = play_image
                 self.play_pause_button["text"] = "Play"
                 break;
-        if (self.waiting_to_quit):
-            debug_message('RECEIVED TEARDOWN REPLY, RELEASE LOCK')
-            lock.release()
         debug_message('END RTSP REPLY RECEIVER THREAD')
 
     def parseRtspReply(self, data):     # get session id and sequence number of video
@@ -581,7 +586,8 @@ class Client:
             return
         return 1
     
-    
+    def notify_exit_to_server(self):
+        self.sendRtspRequest(self.EXIT)
     
     
     def handler(self):
@@ -589,17 +595,18 @@ class Client:
         self.pauseMovie()
         if tkinter.messagebox.askokcancel('Warning!',"Are you sure to quit?"):
             try:
+                self.waiting_to_quit = 1
                 self.exitClient() # send TEARDOWN REQUEST
-                if (self.state != self.INIT):
-                    self.waiting_to_quit = 1
-                    debug_message('BLOCK THE MAIN THREAD, WAITING REPLY FOR TEARDOWN REPLY')
-                    lock.acquire()
-                    lock.acquire()
+                if (self.receive_rtsp_reply_thread_created):
+                    self.receive_rtsp_reply_thread.join()
+                print('2')
+                self.notify_exit_to_server() # Thông báo cho server thu hồi thread nghe request từ client
+                print('3')
                 debug_message('CLOSE RTSP SOCKET')
                 self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket)
                 self.rtspSocket.close()  
             except:
-                debug_message('CAN NOT CONNECT TO SERVER')
+                debug_message('SOME THING WAS WRONG')
             self.master.destroy()  # Close the gui window   
             #sys.exit()           
         else:  # When the user presses cancel, resume playing.

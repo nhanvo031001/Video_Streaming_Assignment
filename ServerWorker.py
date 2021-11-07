@@ -15,6 +15,7 @@ class ServerWorker:
 	SHOWSTAT = 'SHOWSTAT'
 	FORWARD = 'FORWARD'
 	BACKWARD = 'BACKWARD'
+	EXIT = 'EXIT'
 
 	FRAME_TO_FORWARD = 20
 	FRAME_TO_BACKWARD = 20
@@ -44,6 +45,7 @@ class ServerWorker:
 		self.rtp_socket_opened = 0;
 		self.frameSent = 0		# for Statistic button
 		self.clientInfo['session'] = 0;
+		self.client_exit = 0
 		
 	def run(self):
 		threading.Thread(target=self.recvRtspRequest).start()
@@ -56,6 +58,10 @@ class ServerWorker:
 			if data:
 				print("Data received:\n" + data.decode("utf-8"))
 				self.processRtspRequest(data.decode("utf-8"))
+			if self.client_exit:
+				print('\nEND THREAD FOR CLIENT\n')
+				break
+			
 	
 	def processRtspRequest(self, data):
 		"""Process RTSP request sent from the client."""
@@ -164,16 +170,16 @@ class ServerWorker:
 			# Set the number of frame backward
 			self.clientInfo['currentPos'] -= self.FRAME_TO_BACKWARD
 			self.replyRtsp(self.OK_200, seq[1])
+		elif requestType == self.EXIT:
+			self.client_exit = 1 # no reply
 			
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
-			self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
-			
 			# Stop sending if request is PAUSE or TEARDOWN
-			if self.clientInfo['event'].isSet(): 
+			if self.clientInfo['event'].isSet():  #Pause thì end, không gởi nữa
 				break 
-			if self.rtp_socket_opened == 0:
+			if self.rtp_socket_opened == 0: # đóng socket rồi (tức TEARDOWN) thì end, không gởi nữa
 				break
 			data = self.clientInfo['videoStream'].nextFrame()
 			if data: 
@@ -188,6 +194,7 @@ class ServerWorker:
 					if self.clientInfo['currentPos'] > 0:
 						self.clientInfo['currentPos'] -= 1          # end - start + 1 ---> frame foward = 20 = end - start + 1 -----> -=1
 					elif self.clientInfo['currentPos'] == 0:
+						self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
 						self.frameSent += 1
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber), (address, port))
 					else:
