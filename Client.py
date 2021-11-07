@@ -322,9 +322,20 @@ class Client:
                     # Get the current time after receiving the packet in hour : minute : second format
                     currentTime = datetime.now()
                     # Parse the string and convert the time interval to seconds
-                    curResult = str(currentTime - before).split(':')        # curResult[0] hour, curResult[1] minute, curResult[2] second  
+                   
+                   
+                   
+                    # curResult = str(currentTime - before).split(':')        # curResult[0] hour, curResult[1] minute, curResult[2] second  
+                    # self.curSecond += float(curResult[0]) * 3600 + float(
+                    #     curResult[1]) * 60 + float(curResult[2])
+
+                    curResult = str(currentTime - before).split(':')
+                    before = currentTime
                     self.curSecond += float(curResult[0]) * 3600 + float(
                         curResult[1]) * 60 + float(curResult[2])
+
+
+
                     self.sizeData = self.sizeData + sys.getsizeof(data) # for statistic, ratio
 
                     currFrameNbr = rtpPacket.seqNum()       # frame video received from server
@@ -557,11 +568,12 @@ class Client:
                         self.state = self.INIT
                         # Flag the teardownAcked to close the socket.
                         self.teardownAcked = 1
+                        self.curSecond = 0      # new, myself
 
                     elif self.requestSent == self.DESCRIBE:
                         print("Client parsing DESCRIBE")
                         streaminfos = lines[3] + '\n' + lines[4] + '\n' + lines[5] + '\n' + lines[6] + '\n' + lines[
-                            7] + '\n' + lines[8] + '\n' + lines[9] + '\n' + '\n'
+                            7] + '\n' + lines[8] + '\n' + lines[9] + '\n' + lines[10] + '\n' + lines[11] + '\n' + lines[12] + '\n' + '\n'
                         self.streaminfo.insert(END, streaminfos)
 
                     elif self.requestSent == self.SHOWSTAT:

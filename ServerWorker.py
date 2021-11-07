@@ -256,7 +256,11 @@ class ServerWorker:
 			info += "==========================StreamInfo=========================================\n"
 			info += "You are watching a video stream over UDP with RTP packetization\n"
 			# Calculate the accurate frame_being_sent's Number
-			info += f"You have watch the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
+			info += f"You have watched the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
+			# info += f"Video FPS: {self.clientInfo['videoStream'].frames_per_second}\n"
+			info += f"Total frames: {self.clientInfo['videoStream'].total_frames}\n"
+			info += f"Total duration: {self.clientInfo['videoStream'].total_duration}\n"
+			info += f"Video Encode: {self.clientInfo['videoStream'].video_encode}\n"
 			info += f"This message is sent over RTSP at: \n"
 			info += f"IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}\n"
 			info += f"This message is sent over utf8-encode\n"
