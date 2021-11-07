@@ -46,6 +46,7 @@ class Client:
     # Initiation..
     def __init__(self, master, serveraddr, serverport, rtpport, filename):
         self.master = master        # master is GUI
+        self.master.resizable(False, False) 
         self.master.protocol("WM_DELETE_WINDOW", self.handler)
         self.createWidgets()        # UI
         self.serverAddr = serveraddr
@@ -73,7 +74,8 @@ class Client:
         self.start_pause_state = 'start'
         self.waiting_to_quit = 0
         self.receive_rtsp_reply_thread_created = 0
-        self.safe_to_setup = 1;
+        self.safe_to_setup = 1
+        self.streaminfo_hide = 1
     def createWidgets(self):
         """Build GUI."""
 
@@ -165,12 +167,6 @@ class Client:
         self.switch.grid(row=1, column=0, padx=2, pady=2,sticky=N + S + E + W)
 
 
-
-
-
-
-
-
         # Draw horizontal line:       # Row increase 1 because MORE BUTTONS in below row
         self.horizontal1 = Text(self.master, width=30, height=2, bg='#70baff')
         self.horizontal1.grid(row=4, columnspan=4, sticky=E + W)
@@ -179,8 +175,19 @@ class Client:
         self.infoLabel = Label(self.master, width=15, text="VIDEO STATISTIC", font='bold')
         self.infoLabel.grid(row=5, column=0, padx=4, pady=2)
 
-
         # Create DESCRIBE button
+        describe_image = PhotoImage(file = r"./assets/clear.png")
+        describe_image = describe_image.subsample(1, 1)
+        self.describe = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=describe_image)
+        self.describe.image = describe_image
+        self.describe["text"] = "Clear"
+        self.describe["font"] = myFont
+        self.describe["command"] = self.handle_clear_button
+        self.describe.grid(row=5, column=1, padx=2, pady=2,sticky=N + S + E + W)
+       
+       
+       
+        # Create CLEAR BUTTON button
         describe_image = PhotoImage(file = r"./assets/search.png")
         describe_image = describe_image.subsample(1, 1)
         self.describe = Button(self.master,width =150 , compound=LEFT, padx=3, pady=3, bg='#09aeae', image=describe_image)
@@ -206,8 +213,12 @@ class Client:
         # Create TextArea to display stream infomation:
         self.streaminfo = Text(self.master, height=13, width=30)
         self.streaminfo.configure(font=("Courier", 13))
-        self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
+        self.streaminfo.grid_forget();
 
+    def handle_clear_button(self):
+        self.streaminfo.delete(1.0,END)
+        self.streaminfo.grid_forget()
+        self.streaminfo_hide = 1
 
     def setupMovie(self):
         """Setup button handler."""
@@ -296,6 +307,9 @@ class Client:
             while True:
                 if self.receivedTotalFrameNum:
                     break
+            if (self.streaminfo_hide):
+                self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
+                self.streaminfo_hide = 0
             stat_to_show = "---------Statistic---------\n"
             # stat_to_show += f"Current Seq Num:{self.curSeqNum} \t \t StreamDuration:{self.curSecond}\n"
             stat_to_show += f"Current Seq Num:{self.curSeqNum} \t \n"
@@ -584,6 +598,9 @@ class Client:
                         self.curSecond = 0      # new, myself
 
                     elif self.requestSent == self.DESCRIBE:
+                        if (self.streaminfo_hide):
+                            self.streaminfo.grid(row=6, column=0, columnspan=4, sticky=W + E + N + S, padx=2, pady=2)
+                            self.streaminfo_hide = 0
                         print("Client parsing DESCRIBE")
                         
                         self.total_frame = lines[6].split(' ')[2]
@@ -630,9 +647,8 @@ class Client:
 
     
     def handle_switch_button(self):
-        if self.state == self.INIT:
-            return
-        return 1
+        if self.state != self.INIT:
+            self.exitClient()
     
     def notify_exit_to_server(self):
         self.sendRtspRequest(self.EXIT)
