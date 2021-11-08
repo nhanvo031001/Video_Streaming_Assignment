@@ -62,6 +62,8 @@ class ServerWorker:
 				print("Data received:\n" + data.decode("utf-8"))
 				self.processRtspRequest(data.decode("utf-8"))
 			if self.client_exit:
+				connSocket.shutdown(socket.SHUT_RDWR)
+				connSocket.close()
 				print('\nEND THREAD FOR CLIENT\n')
 				break
 			
@@ -138,6 +140,7 @@ class ServerWorker:
 			self.state = self.INIT
 			# Close the RTP socket
 			if (self.rtp_socket_opened):
+				self.clientInfo['rtpSocket'].shutdown(socket.SHUT_RDWR)
 				self.clientInfo['rtpSocket'].close()
 				self.rtp_socket_opened = 0
 		
@@ -184,7 +187,6 @@ class ServerWorker:
 			self.state = self.SWITCHING
 			self.replyRtsp(self.OK_200_SWITCH, seq[1])
 		elif requestType == self.EXIT:
-
 			self.client_exit = 1 # Khổng phản hồi cho client, chỉ end thread đang nghe rtsp từ client
 
 			
@@ -211,7 +213,6 @@ class ServerWorker:
 					elif self.clientInfo['currentPos'] == 0:
 						self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
 						self.frameSent += 1
-						print('Send normol:', frameNumber)
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber), (address, port))
 					else:
 						# Gởi các frame backward
@@ -232,8 +233,6 @@ class ServerWorker:
 							if self.clientInfo['event'].isSet():  #Pause thì end, không gởi nữa
 								pause = 1
 								break 
-
-							print('Send backward: ' + str(frame_prior))
 							self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))
 						# Gởi bù frame hiện tại đang chờ:
 						if pause:

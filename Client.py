@@ -72,7 +72,7 @@ class Client:
 		self.streaminfo_hide = 1
 		self.done_switch = 1
 
-		self.receive_rtsp_reply_thread = threading.Thread(target=self.recvRtspReply)
+		self.receive_rtsp_reply_thread = threading.Thread(target=self.recvRtspReply, daemon=True)
 		self.receive_rtsp_reply_thread.start()
 	def createWidgets(self):
 		"""Build GUI."""
@@ -232,10 +232,6 @@ class Client:
 		"""Teardown button handler."""
 		if self.state != self.INIT and self.state != self.SWITCHING:
 			self.sendRtspRequest(self.TEARDOWN)     # send request to close
-			try:
-				os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)  # Delete the cache image from video
-			except:
-				debug_message('NO CACHED TO DELETE')
 			
 	def convert_play_to_pause(self):
 		self.start_pause_state = 'pause'
@@ -560,6 +556,10 @@ class Client:
 				self.parseRtspReply(reply.decode("utf-8"))
 
 			if self.requestSent == self.TEARDOWN:
+				try:
+					os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)  # Delete the cache image from video
+				except:
+					debug_message('NO CACHED TO DELETE')
 				self.rtpSocket.shutdown(socket.SHUT_RDWR)
 				self.rtpSocket.close()
 				debug_message('CLOSE RTP SOCKET')
@@ -624,6 +624,7 @@ class Client:
 						if (lock.locked()):
 							debug_message('RECEIVED TEARDOWN REPLY, RELEASE LOCK')
 							lock.release() # Mở khoá main thread đang chờ
+						
 
 					elif self.requestSent == self.DESCRIBE:
 						if (self.streaminfo_hide):
@@ -749,8 +750,10 @@ class Client:
 		if tkinter.messagebox.askokcancel('Warning!',"Are you sure to quit?"):
 			try:
 				self.waiting_to_quit = 1
+				lock.acquire()
 				self.exitClient() # send TEARDOWN REQUEST
-				self.receive_rtsp_reply_thread.join()
+				lock.acquire()
+				lock.release()
 				self.notify_exit_to_server() # Thông báo cho server thu hồi thread nghe request từ client
 				debug_message('CLOSE RTSP SOCKET')
 				self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket)
@@ -758,8 +761,6 @@ class Client:
 			except:
 				debug_message('SOME THING WAS WRONG')
 			self.master.destroy()  # Close the gui window   
-			#sys.exit()           
+			sys.exit()           
 		else:  # When the user presses cancel, resume playing.
 			self.playMovie()
-
-	
