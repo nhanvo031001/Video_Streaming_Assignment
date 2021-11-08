@@ -8,8 +8,8 @@ if __name__ == "__main__":
 		serverPort = DEFAULT_SERVER_PORT
 		rtpPort = DEFAULT_RTP_PORT
 		fileName = FILE_NAME
-	except:
-		print("[Usage: ClientLauncher.py Server_name Server_port RTP_port Video_file]\n")	
+	except Exception as error:
+		print("CLIENT INITIALIZATION FAILED\n")	
 	
 	root = Tk()
 	
