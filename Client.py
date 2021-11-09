@@ -750,10 +750,11 @@ class Client:
 		if tkinter.messagebox.askokcancel('Warning!',"Are you sure to quit?"):
 			try:
 				self.waiting_to_quit = 1
-				lock.acquire()
-				self.exitClient() # send TEARDOWN REQUEST
-				lock.acquire()
-				lock.release()
+				if self.state != self.INIT:
+					lock.acquire()
+					self.exitClient() # send TEARDOWN REQUEST
+					lock.acquire()
+					lock.release()
 				self.notify_exit_to_server() # Thông báo cho server thu hồi thread nghe request từ client
 				debug_message('CLOSE RTSP SOCKET')
 				self.rtspSocket.shutdown(socket.SHUT_RDWR)      # close socket)
