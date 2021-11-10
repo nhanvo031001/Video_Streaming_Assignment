@@ -1,2 +1,6 @@
-header = bytearray(12)
-print(header)
+try:
+    filename = "Movie 21.Mjpeg"
+    file = open(filename, 'rb')
+    print('success')
+except:
+    print('error')

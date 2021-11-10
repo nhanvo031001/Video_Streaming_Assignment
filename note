@@ -52,4 +52,21 @@ DESCRIBE:
 			IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}
 			This message is sent over utf8-encode
 			=============================================================================
+
+
+Thứ tự tạo - đóng socket và thread:
+    - SOCKET:
+        + Server:
+            . rtsp socket: Tạo lúc server chạy, socket để nghe request, không đóng
+            . rtp socket: Tạo lúc nhận request PLAY từ client để gởi RTP (tạo sau SETUP để đảm bảo rtpSocket ở 
+            client sẵn sàng nhận vì rtp socket ở client tạo lúc SETUP), đóng lúc server reply TEARDOWN
+        + Client:
+            . rtsp socket: Tạo lúc chạy constructor, đóng lúc đóng app (Để luôn sẵn sàng gởi request cho server)
+            . rtp socket: Tạo lúc gởi yêu cầu SETUP để sẵn sàng nhận RTP, đóng lúc client nhận được reply TEARDOWN 
+            từ server (Đảm bảo server TEARDOWN - không gởi nữa rồi mới đóng) 
+    - Thread:
+        + Server:
+            . rtsp receive thread: tạo lúc chạy server worker, để nhận --> xử lý --> phản hồi rtsp request từ client, 
+            end lúc server gởi thông báo exit cho server
+            . rtp send thread: tạo lúc        
         

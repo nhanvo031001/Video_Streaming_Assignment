@@ -1,6 +1,6 @@
 from random import randint
 import sys, traceback, threading, socket
-
+import os
 from VideoStream import VideoStream
 from RtpPacket import RtpPacket
 
@@ -15,6 +15,8 @@ class ServerWorker:
 	SHOWSTAT = 'SHOWSTAT'
 	FORWARD = 'FORWARD'
 	BACKWARD = 'BACKWARD'
+	EXIT = 'EXIT'
+	SWITCH = 'SWITCH'
 
 	FRAME_TO_FORWARD = 20
 	FRAME_TO_BACKWARD = 20
@@ -22,6 +24,7 @@ class ServerWorker:
 	INIT = 0
 	READY = 1
 	PLAYING = 2
+	SWITCHING = 3
 	state = INIT
 
 	
@@ -31,19 +34,21 @@ class ServerWorker:
 	CON_ERR_500 = 2
 	OK_200_DESCRIBE = 3		# for DESCRIBE button
 	OK_200_SHOWSTAT = 4		# for STATISTIC button
+	OK_200_SWITCH = 5
 	
 	clientInfo = {}
 	
-	def __init__(self, clientInfo):		# clientInfo include {address, port}
+	def __init__(self, clientInfo):		
 		self.clientInfo = clientInfo
-		self.waitTime = 0.05	# for SPEEDUP, SLOWNDOWN
+		self.waitTime = 0	# for SPEEDUP, SLOWNDOWN
 		
 		# Create a dict to store data frame for forward:
 		self.frameDict = {}
 		self.clientInfo['currentPos'] =0 	# for DESCRIBE
-
+		self.rtp_socket_opened = 0;
 		self.frameSent = 0		# for Statistic button
-		
+		self.clientInfo['session'] = 0;
+		self.client_exit = 0
 		
 	def run(self):
 		threading.Thread(target=self.recvRtspRequest).start()
@@ -56,6 +61,12 @@ class ServerWorker:
 			if data:
 				print("Data received:\n" + data.decode("utf-8"))
 				self.processRtspRequest(data.decode("utf-8"))
+			if self.client_exit:
+				connSocket.shutdown(socket.SHUT_RDWR)
+				connSocket.close()
+				print('\nEND THREAD FOR CLIENT\n')
+				break
+			
 	
 	def processRtspRequest(self, data):
 		"""Process RTSP request sent from the client."""
@@ -77,13 +88,17 @@ class ServerWorker:
 				print("processing SETUP\n")
 				
 				try:
+					print('Video:', filename)
 					self.clientInfo['videoStream'] = VideoStream(filename)
+					self.clientInfo['videoStream'].take_video_infomation()
+					self.waitTime = 1/ self.clientInfo['videoStream'].frames_per_second
 					self.state = self.READY
 				except IOError:
 					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 				
 				# Generate a randomized RTSP session ID
-				self.clientInfo['session'] = randint(100000, 999999)
+				if (self.clientInfo['session'] == 0):
+					self.clientInfo['session'] = randint(100000, 999999)
 				
 				# Send RTSP reply
 				self.replyRtsp(self.OK_200, seq[1])
@@ -99,7 +114,7 @@ class ServerWorker:
 				
 				# Create a new socket for RTP/UDP
 				self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				
+				self.rtp_socket_opened = 1;
 				self.replyRtsp(self.OK_200, seq[1])
 				
 				# Create a new thread and start sending RTP packets
@@ -120,13 +135,14 @@ class ServerWorker:
 		# Process TEARDOWN request
 		elif requestType == self.TEARDOWN:
 			print("processing TEARDOWN\n")
-
-			self.clientInfo['event'].set()
 			
 			self.replyRtsp(self.OK_200, seq[1])
-			
+			self.state = self.INIT
 			# Close the RTP socket
-			self.clientInfo['rtpSocket'].close()
+			if (self.rtp_socket_opened):
+				self.clientInfo['rtpSocket'].shutdown(socket.SHUT_RDWR)
+				self.clientInfo['rtpSocket'].close()
+				self.rtp_socket_opened = 0
 		
 		# Process SPEEDUP request
 		elif requestType == self.SPEEDUP:
@@ -153,56 +169,82 @@ class ServerWorker:
 		# process FORWARD request
 		elif requestType == self.FORWARD:
 			print("processing FORWARD\n")
-            # Set the number of frame to forwar
-			self.clientInfo['currentPos'] += self.FRAME_TO_FORWARD
+			# Set the number of frame to forward
+			
+			self.clientInfo['currentPos'] = min(self.clientInfo['currentPos'] + self.FRAME_TO_FORWARD, self.clientInfo['videoStream'].total_frames - self.clientInfo['videoStream'].frameNbr())
+			
 			self.replyRtsp(self.OK_200, seq[1])
 
 		# process BACKWARD request
 		elif requestType == self.BACKWARD:
 			print("processing BACKWARD\n")
-            # Set the number of frame backward
-			self.clientInfo['currentPos'] -= self.FRAME_TO_BACKWARD
-			self.replyRtsp(self.OK_200, seq[1])
+			# Set the number of frame backward
+			self.clientInfo['currentPos'] = max(self.clientInfo['currentPos'] - self.FRAME_TO_BACKWARD, 0 - self.clientInfo['videoStream'].frameNbr())
 			
-	def sendRtp(self):
+			self.replyRtsp(self.OK_200, seq[1])
+		elif requestType == self.SWITCH:
+			print('processing SWITCH\n')
+			self.state = self.SWITCHING
+			self.replyRtsp(self.OK_200_SWITCH, seq[1])
+		elif requestType == self.EXIT:
+			self.client_exit = 1 # Khổng phản hồi cho client, chỉ end thread đang nghe rtsp từ client
+
+			
+	def sendRtp(self): #ABCDEF
 		"""Send RTP packets over UDP."""
 		while True:
-			#self.clientInfo['event'].wait(0.05) 
-			self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
-			
 			# Stop sending if request is PAUSE or TEARDOWN
-			if self.clientInfo['event'].isSet(): 
+			if self.clientInfo['event'].isSet():  #Pause thì end, không gởi nữa
 				break 
-				
-			data = self.clientInfo['videoStream'].nextFrame()
-			if data: 
-				frameNumber = self.clientInfo['videoStream'].frameNbr()
+			if self.rtp_socket_opened == 0: # đóng socket rồi (tức TEARDOWN) thì end, không gởi nữa
+				break
+			data = self.clientInfo['videoStream'].nextFrame() 
+			if data or self.clientInfo['currentPos'] < 0: # Yêu cầu coi lại
+				frameNumber = self.clientInfo['videoStream'].frameNbr() 
 				# Store frame into clientInfo:
 				self.frameDict[frameNumber] = data		# save each frame as an element of array frameDict
 				try:
-					address = self.clientInfo['rtspSocket'][1][0]
+					address = self.clientInfo['rtspSocket'][1][0] 
 					port = int(self.clientInfo['rtpPort'])
 					#self.frameSent +=1
 					#self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
 					if self.clientInfo['currentPos'] > 0:
 						self.clientInfo['currentPos'] -= 1          # end - start + 1 ---> frame foward = 20 = end - start + 1 -----> -=1
 					elif self.clientInfo['currentPos'] == 0:
+						self.clientInfo['event'].wait(self.waitTime) 	# change for SPEEDUP
 						self.frameSent += 1
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber), (address, port))
 					else:
-						while self.clientInfo['currentPos'] < 0:
+						# Gởi các frame backward
+						pause = 0
+						teardown = 0
+						while self.clientInfo['currentPos'] < 0: # 
+							if self.clientInfo['event'].isSet():  #Pause thì end, không gởi nữa
+								pause = 1
+								break 
+
 							self.clientInfo['event'].wait(self.waitTime)
 							frame_prior = frameNumber + self.clientInfo['currentPos']		# currentPos hien tai dang < 0
 							data_prior = self.frameDict[frame_prior]		# lay video frame da luu trong array frameDict
 							#print(f"currentPOS {self.clientInfo['currentPos']}")
 							self.clientInfo['currentPos'] += 1
 							self.frameSent += 1
+							
+							if self.clientInfo['event'].isSet():  #Pause thì end, không gởi nữa
+								pause = 1
+								break 
 							self.clientInfo['rtpSocket'].sendto(self.makeRtp(data_prior, frame_prior), (address, port))
+						# Gởi bù frame hiện tại đang chờ:
+						if pause:
+							break
+						self.clientInfo['rtpSocket'].sendto(self.makeRtp(self.frameDict[frame_prior+ 1], frame_prior + 1), (address, port))
+						print('Send backward:', frame_prior + 1)
 				except:
-					print("Connection Error")
+					print("RTP sending failed!")
 					#print('-'*60)
 					#traceback.print_exc(file=sys.stdout)
 					#print('-'*60)
+			
 
 	def makeRtp(self, payload, frameNbr):
 		"""RTP-packetize the video data."""
@@ -230,29 +272,70 @@ class ServerWorker:
 			connSocket.send(reply.encode())
 
 		# Special case for DESCRIBE reply
-		if code == self.OK_200_DESCRIBE:
+		elif code == self.OK_200_DESCRIBE:
 			info = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'
-			info += "==========================StreamInfo=========================================\n"
+			#info += "===============================StreamInfo=========================\n"
+			#info += "You are watching a video stream over UDP with RTP packetization\n"
+			# Calculate the accurate frame_being_sent's Number
+			#info += f"You have watched the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
+			# info += f"Video FPS: {self.clientInfo['videoStream'].frames_per_second}\n"
+			#info += f"Total frames: {self.clientInfo['videoStream'].total_frames}\n"
+			#info += f"Total duration: {self.clientInfo['videoStream'].total_duration}\n"
+			#info += f"Video Encode: {self.clientInfo['videoStream'].video_encode}\n"
+			#info += f"This message is sent over RTSP at: \n"
+			#info += f"IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}\n"
+			#info += f"This message is sent over utf8-encode\n"
+			#info += "==================================================================\n"
+			
+			
+			############ CLIENT SIDE RENDER cho dễ canh!!!!!
 			info += "You are watching a video stream over UDP with RTP packetization\n"
-            # Calculate the accurate frame_being_sent's Number
-			info += f"You have watch the video to frame: {self.clientInfo['videoStream'].frameNbr() + self.clientInfo['currentPos']}\n"
+			info += f"{self.clientInfo['videoStream'].height}\n"
+			info += f"{self.clientInfo['videoStream'].width}\n"
+			info += f"{self.clientInfo['videoStream'].frames_per_second}\n"
+			info += f"{self.clientInfo['videoStream'].total_frames}\n"
+			info += f"{self.clientInfo['videoStream'].total_duration}\n"
+			info += f"{self.clientInfo['videoStream'].video_encode}\n"
 			info += f"This message is sent over RTSP at: \n"
-			info += f"IP Address:{self.clientInfo['rtspSocket'][1][0]} | Port: {self.clientInfo['rtspSocket'][1][1]}\n"
+			info += f"{self.clientInfo['rtspSocket'][1][0]}\n"
+			info += f"{self.clientInfo['rtspSocket'][1][1]}\n"
 			info += f"This message is sent over utf8-encode\n"
-			info += "=============================================================================\n"
+			
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(info.encode())
 		
 		# Special case for SHOWSTAT reply
-		if code == self.OK_200_SHOWSTAT:
+		elif code == self.OK_200_SHOWSTAT:
 			info = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'
 			info += f"Total Frames Sent: {self.frameSent}"
 			print(f"Frames SENT: {self.frameSent}")
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(info.encode())
+		# SWTICH reply
+		elif code == self.OK_200_SWITCH:
+			info = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'			
+			file_list_string = self.find_all_videos()
+			info += file_list_string
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(info.encode())
+			self.state = self.INIT
 
 		# Error messages
 		elif code == self.FILE_NOT_FOUND_404:
+			info = 'RTSP/1.0 404 NOT FOUND\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'	
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(info.encode())
 			print("404 NOT FOUND")
 		elif code == self.CON_ERR_500:
+			info = 'RTSP/1.0 500 CONNECTION ERROR\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\n'
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(info.encode())
 			print("500 CONNECTION ERROR")
+	
+	def find_all_videos(self):
+		file_list = ''
+		for file_name in os.listdir():
+			if file_name.endswith('Mjpeg'):
+				file_list += (str(file_name) + '\n')
+		return file_list
+				
