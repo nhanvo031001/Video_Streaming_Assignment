@@ -1,7 +1,7 @@
 import sys
 from tkinter import Tk
 from Client import Client
-from config_client import FILE_NAME
+from config_client import FILE_NAME	#comment
 if __name__ == "__main__":
 	try:
 		serverAddr = sys.argv[1]
