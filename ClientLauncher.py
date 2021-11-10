@@ -6,7 +6,7 @@ if __name__ == "__main__":
 	try:
 		serverAddr = sys.argv[1]
 		serverPort = sys.argv[2]
-		rtpPort = sys.argv[3]
+		rtpPort = sys.argv[3]	#rtp port
 		fileName = FILE_NAME
 	except Exception as error:
 		print("CLIENT INITIALIZATION FAILED\n")	
