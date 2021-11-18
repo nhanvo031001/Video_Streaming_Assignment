@@ -238,7 +238,8 @@ class ServerWorker:
 						if pause:
 							break
 						self.clientInfo['rtpSocket'].sendto(self.makeRtp(self.frameDict[frame_prior+ 1], frame_prior + 1), (address, port))
-						print('Send backward:', frame_prior + 1)
+						self.frameSent +=1
+						#print('Send backward:', frame_prior + 1)
 				except:
 					print("RTP sending failed!")
 					#print('-'*60)

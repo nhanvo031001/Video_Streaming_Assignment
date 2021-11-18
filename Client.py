@@ -621,6 +621,8 @@ class Client:
 						# Flag the teardownAcked to close the socket.
 						self.teardownAcked = 1
 						self.curSecond = 0      # new, myself
+						self.sizeData = 0	# new,myself
+
 						if (lock.locked()):
 							debug_message('RECEIVED TEARDOWN REPLY, RELEASE LOCK')
 							lock.release() # Mở khoá main thread đang chờ
